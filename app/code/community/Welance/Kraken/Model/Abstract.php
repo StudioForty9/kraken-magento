@@ -9,11 +9,29 @@ abstract class Welance_Kraken_Model_Abstract extends Mage_Core_Model_Abstract
     const TYPE_CACHE = 'cache';
 
 
+    protected function _downloadImage($url)
+    {
+        $headers[] = 'Accept: image/gif, image/x-bitmap, image/jpeg, image/pjpeg';
+        $headers[] = 'Connection: Keep-Alive';
+        $headers[] = 'Content-type: application/x-www-form-urlencoded;charset=UTF-8';
+        $user_agent = 'php';
+        $process = curl_init($url);
+        curl_setopt($process, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($process, CURLOPT_HEADER, 0);
+        curl_setopt($process, CURLOPT_USERAGENT, $user_agent);
+        curl_setopt($process, CURLOPT_TIMEOUT, 30);
+        curl_setopt($process, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($process, CURLOPT_FOLLOWLOCATION, 1);
+        $return = curl_exec($process);
+        curl_close($process);
+
+        return $return;
+    }
+
     /**
      * @param $response
      * @return $this
      */
-
     public function saveResponse($response)
     {
         if ($response->success == true) {
@@ -21,7 +39,13 @@ abstract class Welance_Kraken_Model_Abstract extends Mage_Core_Model_Abstract
 
             if ($response->original_size <= $response->kraked_size == false) {
                 try {
-                    copy($response->kraked_url, $path);
+                    if (!copy($response->kraked_url, $path)) {
+                        $image = $this->_downloadImage($response->kraked_url);
+                        $fp = fopen($path, "w");
+                        fwrite($fp, $image);
+                        fclose($fp);
+                    }
+
                 } catch(Exception $e){
                     Mage::log($e->getMessage(), null, 'kraken_response.log');
                 }
